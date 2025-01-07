@@ -42,7 +42,15 @@ async function run() {
       res.send(result)
     })
 
-   
+    //read all query
+    app.get('/queries', async(req, res)=>{
+      const cursor = queryCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+    
+  
+
 
 
 
