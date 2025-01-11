@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
 require('dotenv').config();
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 app.use(cors());
@@ -33,30 +33,104 @@ async function run() {
     const database = client.db("syAneDB");
     const queryCollection = database.collection("queries");
     const recommendationCollection = database.collection("recommendations");
-    
+
     //post a query
-    app.post('/add-query', async(req, res)=>{
+    app.post('/add-query', async (req, res) => {
       const queryData = req.body;
       const result = await queryCollection.insertOne(queryData);
       console.log(result)
       res.send(result)
     })
 
+    //post a Recommendation
+    app.post('/add-recommendation', async (req, res) => {
+      const recommendation = req.body;
+      const result = await recommendationCollection.insertOne(recommendation);
+      // query_title,
+      // // product_name,
+      // // user_email,
+      // // user_name,
+      const id = recommendation.queryId;
+      const query = { _id: new ObjectId(id) };
+
+      const query1 = await queryCollection.findOne(query);
+
+      let newCount = 0;
+
+      if (query1.recommendationCount) {
+        newCount = query1.recommendationCount + 1;
+      }
+      else {
+        newCount = 1
+      }
+
+      //update recommendationCount
+      const filter = { _id: new ObjectId(id) };
+      // const options = { upsert: true };
+      const updateDoc = {
+        $set: {
+          recommendationCount: newCount
+        },
+      };
+      
+      const updatedResult = await queryCollection.updateOne(filter, updateDoc);
+
+      res.send(updatedResult)
+    })
+
     //read all query
-    app.get('/queries', async(req, res)=>{
+    app.get('/queries', async (req, res) => {
       const cursor = queryCollection.find();
       const result = await cursor.toArray();
       res.send(result);
     })
-    
-  
+
+    //read my query
+    app.get('/queries/:email', async (req, res) => {
+      const email = req.params.email;
+      const query = { user_email: email }
+      const options = {
+        // Sort returned documents in ascending order 
+        sort: { query_date: 1 },
+
+      };
+      const result = await queryCollection.find(query, options).toArray();
+      res.send(result);
+    })
+
+    //get single query as per specific id
+    app.get('/query/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await queryCollection.findOne(query);
+      res.send(result);
+    })
+
+    app.put('/update-query/:id', async (req, res) => {
+
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const updatedQueryData = req.body;
+      const updateDoc = {
+        $set: updatedQueryData
+      };
+      const result = await queryCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    })
+
+    //delete single query with specific id
+    app.delete('/query/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await queryCollection.deleteOne(query);
+      res.send(result);
+    })
 
 
 
 
 
-
-    
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
@@ -65,10 +139,10 @@ async function run() {
 run().catch(console.dir);
 
 
-app.get('/', async(req, res)=>{
-    res.send("assignment-11")
+app.get('/', async (req, res) => {
+  res.send("assignment-11")
 })
 
-app.listen(port,()=>{
-    console.log("port is running on port#", port)
+app.listen(port, () => {
+  console.log("port is running on port#", port)
 })
