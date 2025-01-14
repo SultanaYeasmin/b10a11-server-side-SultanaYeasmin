@@ -41,62 +41,21 @@ async function run() {
       console.log(result)
       res.send(result)
     })
-
-    //post a Recommendation
-    app.post('/add-recommendation', async (req, res) => {
-      const recommendation = req.body;
-      const result = await recommendationCollection.insertOne(recommendation);
-      // query_title,
-      // // product_name,
-      // // user_email,
-      // // user_name,
-      const id = recommendation.queryId;
-      const query = { _id: new ObjectId(id) };
-
-      const query1 = await queryCollection.findOne(query);
-
-      let newCount = 0;
-
-      if (query1.recommendationCount) {
-        newCount = query1.recommendationCount + 1;
-      }
-      else {
-        newCount = 1
-      }
-
-      //update recommendationCount
-      const filter = { _id: new ObjectId(id) };
-      // const options = { upsert: true };
-      const updateDoc = {
-        $set: {
-          recommendationCount: newCount
-        },
-      };
-      
-      const updatedResult = await queryCollection.updateOne(filter, updateDoc);
-
-      res.send(updatedResult)
-    })
-
-    //read all query
+        //read all query
     app.get('/queries', async (req, res) => {
-      const cursor = queryCollection.find();
-      const result = await cursor.toArray();
+      const query = {}
+      const options = {
+        // Sort returned documents in ascending order 
+        sort: { query_date: -1 },
+      };
+    
+      const result = await queryCollection.find(query, options).toArray();
+      console.log(result)
       res.send(result);
     })
 
     //read my query
-    app.get('/queries/:email', async (req, res) => {
-      const email = req.params.email;
-      const query = { user_email: email }
-      const options = {
-        // Sort returned documents in ascending order 
-        sort: { query_date: 1 },
-
-      };
-      const result = await queryCollection.find(query, options).toArray();
-      res.send(result);
-    })
+    
 
     //get single query as per specific id
     app.get('/query/:id', async (req, res) => {
@@ -127,9 +86,64 @@ async function run() {
       res.send(result);
     })
 
+//post a Recommendation
+app.post('/add-recommendation', async (req, res) => {
+  const recommendation = req.body;
+  const result = await recommendationCollection.insertOne(recommendation);
 
+  //
+  const id = recommendation.queryId;
+  const query = { _id: new ObjectId(id) };
 
+  const query1 = await queryCollection.findOne(query);
+  
+  let newCount = 0;
+  if (query1.recommendationCount) {
+    newCount = query1.recommendationCount + 1;
+  }
+  else {
+    newCount = 1
+  }
 
+  //update recommendationCount
+  const filter = { _id: new ObjectId(id) };
+  // const options = { upsert: true };
+  const updateDoc = {
+    $set: {
+      recommendationCount: newCount
+    },
+  };
+  
+  const updatedResult = await queryCollection.updateOne(filter, updateDoc);
+
+  res.send(updatedResult)
+})
+
+// read all Recommendations for specific id
+app.get('/recommendations/:queryId', async (req, res) => {
+  const queryId = req.params.queryId;
+  const query = {queryId : queryId};
+  // console.log(query)
+  const result = await recommendationCollection.find(query).toArray();
+  res.send(result);
+})
+
+app.get('/recommendations', async(req, res)=>{
+  const email = req.query.email;
+  const query = {recommender_email : email};
+  // console.log(query);
+  const result = await recommendationCollection.find(query).toArray();
+   
+  res.send(result);
+})
+app.get('/recommendations-for-me/:email', async(req, res)=>{
+  const email = req.params.email;
+  const query = { userEmailQuery : email};
+  // console.log(query);
+  const result = await recommendationCollection.find(query).toArray();
+   
+  res.send(result);
+})
 
   } finally {
     // Ensures that the client will close when you finish/error
