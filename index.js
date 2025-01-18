@@ -49,7 +49,17 @@ async function run() {
         sort: { query_date: -1 },
       };
       const result = await queryCollection.find(query, options).toArray();
-      console.log(result)
+      // console.log(result)
+      res.send(result);
+    })
+    //read all queries in descending order only 6
+    app.get('/queries-six', async (req, res) => {
+      const query = {};
+      const options = {
+        sort: { query_date: -1 },
+      };
+      const result = await queryCollection.find(query, options).limit(6).toArray();
+      
       res.send(result);
     })
 
