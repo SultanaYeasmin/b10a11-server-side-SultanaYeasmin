@@ -99,7 +99,7 @@ async function run() {
     app.post('/add-recommendation', async (req, res) => {
       const recommendation = req.body;
       const result = await recommendationCollection.insertOne(recommendation);
-
+console.log(result)
       //
       const id = recommendation.queryId;
       const query = { _id: new ObjectId(id) };
@@ -125,7 +125,7 @@ async function run() {
 
       const updatedResult = await queryCollection.updateOne(filter, updateDoc);
 
-      res.send(updatedResult)
+      res.send(result)
     })
 
     // read all Recommendations for specific id
@@ -139,10 +139,9 @@ async function run() {
 
     app.get('/recommendations', async (req, res) => {
       const email = req.query.email;
-      const query = { recommender_email: email };
+      const query = {recommenderEmail: email };
       // console.log(query);
       const result = await recommendationCollection.find(query).toArray();
-
       res.send(result);
     })
     app.get('/recommendations-for-me/:email', async (req, res) => {
@@ -151,6 +150,14 @@ async function run() {
       // console.log(query);
       const result = await recommendationCollection.find(query).toArray();
 
+      res.send(result);
+    })
+
+     //delete single recommendation with specific id
+     app.delete('/myRecommendations/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await recommendationCollection.deleteOne(query);
       res.send(result);
     })
 
