@@ -44,7 +44,18 @@ async function run() {
 
     //read all queries in descending order
     app.get('/queries', async (req, res) => {
-      const query = {};
+      let search = req.query.search;
+      let query = {}
+      if(search) {
+        query = {
+          product_name: {
+            $regex: search,
+            $options: 'i',
+          },
+        }
+
+      } 
+      
       const options = {
         sort: { query_date: -1 },
       };
