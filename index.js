@@ -16,13 +16,30 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:5173',
-  
-    ],
+
+  ],
   credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
 
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+  console.log('inside verify token middleware', req.cookies);
+
+  if (!token) {
+    return res.status(401).send({ message: 'unauthorized access' })
+  }
+
+  jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: 'unauthorized access' });
+    }
+    req.user = decoded;
+
+    next();
+  })
+}
 const uri = `mongodb+srv://${process.env.db_username}:${process.env.db_password}@cluster0.g4p4k.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
@@ -48,29 +65,27 @@ async function run() {
     const recommendationCollection = database.collection("recommendations");
 
     //Auth related APIs
-    app.post('/jwt', async(req, res)=>{
+    app.post('/jwt', async (req, res) => {
       const user = req.body;
-      const token = jwt.sign(user, process.env.JWT_SECRET , {expiresIn : '365d'});
+      const token = jwt.sign(user, process.env.JWT_SECRET, { expiresIn: '365d' });
       res
-      .cookie('token',token,{
-        httpOnly : true,
-        secure:  false,
-        
-      })
-      .send({success :true})
+        .cookie('token', token, {
+          httpOnly: true,
+          secure: false,
+
+        })
+        .send({ success: true })
     })
 
-    app.post('/logout', async(req,res)=>{
+    app.post('/logout', async (req, res) => {
       res
-      .clearCookie('token', {httpOnly:true, secure:false})
-      .send({success : true})
+        .clearCookie('token', { httpOnly: true, secure: false })
+        .send({ success: true })
     })
-
-
 
 
     //post a query
-    app.post('/add-query', async (req, res) => {
+    app.post('/add-query', verifyToken, async (req, res) => {
       const queryData = req.body;
       const result = await queryCollection.insertOne(queryData);
       console.log(result)
@@ -110,13 +125,17 @@ async function run() {
     })
 
     //read my query
-    app.get('/queries/:email', async (req, res) => {
+    app.get('/queries/:email', verifyToken, async (req, res) => {
       const emailAddress = req.params.email;
-      const query = { user_email: emailAddress }
+      const query = { user_email: emailAddress };
+
+      //token email !== query email
+      if (req.user.email !== emailAddress) {
+        console.log(req.user.email, emailAddress)
+        return res.status(403).send({ message: "forbidden access" })
+      }
       const options = {
-
         sort: { query_date: -1 },
-
       };
       const result = await queryCollection.find(query, options).toArray();
       res.send(result);
@@ -130,7 +149,7 @@ async function run() {
       res.send(result);
     })
 
-    app.put('/update-query/:id', async (req, res) => {
+    app.put('/update-query/:id',verifyToken, async (req, res) => {
 
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) }
@@ -152,7 +171,7 @@ async function run() {
     })
 
     //post a Recommendation
-    app.post('/add-recommendation', async (req, res) => {
+    app.post('/add-recommendation',  async (req, res) => {
       const recommendation = req.body;
       const result = await recommendationCollection.insertOne(recommendation);
       console.log(result)
@@ -193,17 +212,30 @@ async function run() {
       res.send(result);
     })
 
-    app.get('/recommendations', async (req, res) => {
+    app.get('/recommendations', verifyToken, async (req, res) => {
       const email = req.query.email;
       const query = { recommenderEmail: email };
       // console.log(query);
+      //token email !== query email
+      if (req.user.email !== email) {
+        console.log(req.user.email, email)
+        return res.status(403).send({ message: "forbidden access" })
+      }
+
       const result = await recommendationCollection.find(query).toArray();
       res.send(result);
     })
-    app.get('/recommendations-for-me/:email', async (req, res) => {
+
+
+    app.get('/recommendations-for-me/:email', verifyToken , async (req, res) => {
       const email = req.params.email;
       const query = { userEmailQuery: email };
       // console.log(query);
+       //token email !== query email
+       if (req.user.email !== email) {
+        console.log(req.user.email, email)
+        return res.status(403).send({ message: "forbidden access" })
+      }
       const result = await recommendationCollection.find(query).toArray();
 
       res.send(result);
