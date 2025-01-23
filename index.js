@@ -60,6 +60,15 @@ async function run() {
       .send({success :true})
     })
 
+    app.post('/logout', async(req,res)=>{
+      res
+      .clearCookie('token', {httpOnly:true, secure:false})
+      .send({success : true})
+    })
+
+
+
+
     //post a query
     app.post('/add-query', async (req, res) => {
       const queryData = req.body;
