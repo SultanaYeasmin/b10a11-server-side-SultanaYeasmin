@@ -1,14 +1,27 @@
 const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
+
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
+
+
+
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
+
+
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+  
+    ],
+  credentials: true
+}));
 app.use(express.json());
-
-
+app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.db_username}:${process.env.db_password}@cluster0.g4p4k.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -34,6 +47,19 @@ async function run() {
     const queryCollection = database.collection("queries");
     const recommendationCollection = database.collection("recommendations");
 
+    //Auth related APIs
+    app.post('/jwt', async(req, res)=>{
+      const user = req.body;
+      const token = jwt.sign(user, process.env.JWT_SECRET , {expiresIn : '365d'});
+      res
+      .cookie('token',token,{
+        httpOnly : true,
+        secure:  false,
+        
+      })
+      .send({success :true})
+    })
+
     //post a query
     app.post('/add-query', async (req, res) => {
       const queryData = req.body;
@@ -46,7 +72,7 @@ async function run() {
     app.get('/queries', async (req, res) => {
       let search = req.query.search;
       let query = {}
-      if(search) {
+      if (search) {
         query = {
           product_name: {
             $regex: search,
@@ -54,8 +80,8 @@ async function run() {
           },
         }
 
-      } 
-      
+      }
+
       const options = {
         sort: { query_date: -1 },
       };
@@ -70,7 +96,7 @@ async function run() {
         sort: { query_date: -1 },
       };
       const result = await queryCollection.find(query, options).limit(6).toArray();
-      
+
       res.send(result);
     })
 
@@ -120,7 +146,7 @@ async function run() {
     app.post('/add-recommendation', async (req, res) => {
       const recommendation = req.body;
       const result = await recommendationCollection.insertOne(recommendation);
-console.log(result)
+      console.log(result)
       //
       const id = recommendation.queryId;
       const query = { _id: new ObjectId(id) };
@@ -160,7 +186,7 @@ console.log(result)
 
     app.get('/recommendations', async (req, res) => {
       const email = req.query.email;
-      const query = {recommenderEmail: email };
+      const query = { recommenderEmail: email };
       // console.log(query);
       const result = await recommendationCollection.find(query).toArray();
       res.send(result);
@@ -174,8 +200,8 @@ console.log(result)
       res.send(result);
     })
 
-     //delete single recommendation with specific id
-     app.delete('/myRecommendations/:id', async (req, res) => {
+    //delete single recommendation with specific id
+    app.delete('/myRecommendations/:id', async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
       const result = await recommendationCollection.deleteOne(query);
