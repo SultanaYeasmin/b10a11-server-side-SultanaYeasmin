@@ -181,20 +181,13 @@ async function run() {
 
       const query1 = await queryCollection.findOne(query);
 
-      let newCount = 0;
-      if (query1.recommendationCount) {
-        newCount = query1.recommendationCount + 1;
-      }
-      else {
-        newCount = 1
-      }
-
+     
       //update recommendationCount
       const filter = { _id: new ObjectId(id) };
       // const options = { upsert: true };
       const updateDoc = {
-        $set: {
-          recommendationCount: newCount
+        $inc: {
+          recommendationCount: 1
         },
       };
 
@@ -243,10 +236,27 @@ async function run() {
 
     //delete single recommendation with specific id
     app.delete('/myRecommendations/:id', async (req, res) => {
+
       const id = req.params.id;
       const query = { _id: new ObjectId(id) }
+      const recommendation1 = await recommendationCollection.findOne(query);
+      const queryId = recommendation1.queryId;
       const result = await recommendationCollection.deleteOne(query);
-      res.send(result);
+    
+            
+            //update recommendationCount
+      const filter = { _id: new ObjectId(queryId) };
+      // const options = { upsert: true };
+      const updateDoc = {
+        $inc: {
+          recommendationCount: -1
+        },
+      };
+
+      const updatedResult = await queryCollection.updateOne(filter, updateDoc);
+
+      res.send(result)
+      
     })
 
   } finally {
