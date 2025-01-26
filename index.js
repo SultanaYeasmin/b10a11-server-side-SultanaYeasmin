@@ -1,22 +1,17 @@
 const express = require('express');
 const cors = require('cors');
 const port = process.env.PORT || 5000;
-
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-
-
-
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-
-
 
 const app = express();
 app.use(cors({
   origin: [
     'http://localhost:5173',
-
+'https://assignment-11-sy11.web.app',
+'https://assignment-11-sy11.firebaseapp.com'
   ],
   credentials: true
 }));
@@ -54,10 +49,10 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
 
     // Get the database and collection on which to run the operation
     const database = client.db("syAneDB");
@@ -71,7 +66,8 @@ async function run() {
       res
         .cookie('token', token, {
           httpOnly: true,
-          secure: false,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
 
         })
         .send({ success: true })
